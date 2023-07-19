@@ -1,0 +1,26 @@
+{
+  "name": "stats-webgl",
+  "version": "0.1.0",
+  "description": "A pure webgl stats.",
+  "main": "./dist/stats-webgl.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "build": "rollup -c rollup.config.js"
+  },
+  "keywords": [
+    "webgl",
+    "stats"
+  ],
+  "author": "shawn0326",
+  "license": "MIT",
+  "homepage": "https://github.com/shawn0326/stats-webgl",
+  "devDependencies": {
+    "only-allow": "^1.1.1",
+    "prettier": "^3.0.0",
+    "rollup": "^3.26.3"
+  }
+}

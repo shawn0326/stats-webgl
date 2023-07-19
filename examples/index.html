@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Examples</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      #info {
+        position: absolute;
+        top: 0;
+        left: 0;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 0.5em;
+        font-family: monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="importmap">
+      {
+        "imports": {
+          "t3d": "https://unpkg.com/t3d@latest/build/t3d.module.js"
+        }
+      }
+    </script>
+    <script async src="https://unpkg.com/es-module-shims/dist/es-module-shims.js"></script>
+    <div id="info"></div>
+    <script type="module">
+      import * as t3d from "t3d";
+      import { Texture2DLoader } from "https://unpkg.com/t3d/examples/jsm/loaders/Texture2DLoader.js";
+      import stats from "../dist/stats-webgl.js";
+
+      let width = window.innerWidth || 2;
+      let height = window.innerHeight || 2;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      document.body.appendChild(canvas);
+
+      const gl = canvas.getContext("webgl2", {
+        antialias: true,
+        alpha: false,
+      });
+      const renderer = new t3d.Renderer(gl);
+      renderer.renderPass.setClearColor(0.1, 0.1, 0.1, 1);
+      const backRenderTarget = new t3d.RenderTargetBack(canvas);
+
+      const texture = new Texture2DLoader().load("./uv_grid_opengl.jpg");
+
+      const scene = new t3d.Scene();
+
+      const geometry = new t3d.BoxGeometry(8, 8, 8);
+      const material = new t3d.PBRMaterial();
+      material.diffuseMap = texture;
+
+      for (let i = 0; i < 9000; i++) {
+        const mesh = new t3d.Mesh(geometry, material);
+        scene.add(mesh);
+      }
+
+      const ambientLight = new t3d.AmbientLight(0xffffff);
+      scene.add(ambientLight);
+
+      const directionalLight = new t3d.DirectionalLight(0xffffff);
+      directionalLight.position.set(-5, 5, 5);
+      directionalLight.lookAt(new t3d.Vector3(), new t3d.Vector3(0, 1, 0));
+      scene.add(directionalLight);
+
+      const camera = new t3d.Camera();
+      camera.position.set(0, 10, 30);
+      camera.lookAt(new t3d.Vector3(0, 0, 0), new t3d.Vector3(0, 1, 0));
+      camera.setPerspective((45 / 180) * Math.PI, width / height, 1, 1000);
+      scene.add(camera);
+
+      let counter = 0,
+        compiledPrograms = 0,
+        uploadedTextures = 0;
+
+      const info = document.getElementById("info");
+
+      function loop(count) {
+        requestAnimationFrame(loop);
+
+        // mesh.euler.y = (count / 1000) * 0.5; // rotate cube
+
+        scene.updateMatrix();
+        scene.updateRenderStates(camera);
+        scene.updateRenderQueue(camera);
+
+        stats.begin(renderer.renderPass.gl);
+
+        renderer.renderPass.setRenderTarget(backRenderTarget);
+        renderer.renderPass.clear(true, true, false);
+        renderer.renderScene(scene, camera);
+
+        stats.end(renderer.renderPass.gl);
+
+        // get stats for the current frame
+        const current = stats.getCurrent();
+
+        // print stats for the first frame
+        if (counter++ === 0) console.log(JSON.stringify(current));
+
+        // accumulate stats
+        compiledPrograms += current.compileShaderCalls;
+        uploadedTextures += current.uploadTextureCalls;
+
+        // update info every 20 frames
+        if (counter % 20 === 0) {
+          info.innerHTML = `
+            drawcalls: ${current.drawCalls}<br/>
+            cpuCost: ${current.cpuCost.toFixed(2)}<br/>
+            gpuCost: ${current.gpuCost.toFixed(2)}<br/>
+            compiledPrograms: ${compiledPrograms}<br/>
+            uploadedTextures: ${uploadedTextures}
+          `;
+        }
+      }
+      requestAnimationFrame(loop);
+
+      function onWindowResize() {
+        width = window.innerWidth || 2;
+        height = window.innerHeight || 2;
+        camera.setPerspective((45 / 180) * Math.PI, width / height, 1, 1000);
+        backRenderTarget.resize(width, height);
+      }
+      window.addEventListener("resize", onWindowResize, false);
+    </script>
+  </body>
+</html>
